@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>番茄时间管理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --work-color: #e74c3c;
+            --short-break-color: #27ae60;
+            --long-break-color: #3498db;
+            --bg-dark: #1a1a2e;
+            --text-light: #eee;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-light);
+        }
+
+        .container {
+            text-align: center;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        /* Mode Selector */
+        .mode-selector {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 40px;
+            flex-wrap: wrap;
+        }
+
+        .mode-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-light);
+        }
+
+        .mode-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .mode-btn.active.work {
+            background: var(--work-color);
+        }
+
+        .mode-btn.active.short-break {
+            background: var(--short-break-color);
+        }
+
+        .mode-btn.active.long-break {
+            background: var(--long-break-color);
+        }
+
+        /* Timer Display */
+        .timer-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 0 auto 40px;
+        }
+
+        .timer-circle {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3),
+                        inset 0 0 30px rgba(255, 255, 255, 0.05);
+        }
+
+        .timer-circle::before {
+            content: '';
+            position: absolute;
+            width: calc(100% - 20px);
+            height: calc(100% - 20px);
+            border-radius: 50%;
+            border: 4px solid transparent;
+            border-top-color: var(--work-color);
+            animation: none;
+        }
+
+        .timer-circle.running::before {
+            animation: rotate 2s linear infinite;
+        }
+
+        .timer-circle.work::before {
+            border-top-color: var(--work-color);
+        }
+
+        .timer-circle.short-break::before {
+            border-top-color: var(--short-break-color);
+        }
+
+        .timer-circle.long-break::before {
+            border-top-color: var(--long-break-color);
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .time-display {
+            font-size: 4.5rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+        }
+
+        .mode-label {
+            font-size: 1.2rem;
+            color: #888;
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .control-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .control-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+
+        .start-btn {
+            background: linear-gradient(145deg, #e74c3c, #c0392b);
+            color: white;
+            box-shadow: 0 5px 20px rgba(231, 76, 60, 0.4);
+        }
+
+        .start-btn.running {
+            background: linear-gradient(145deg, #f39c12, #d68910);
+            box-shadow: 0 5px 20px rgba(243, 156, 18, 0.4);
+        }
+
+        .reset-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-light);
+        }
+
+        .reset-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Stats */
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--work-color);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        /* Tomato Icons */
+        .tomatoes {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+
+        .tomato {
+            font-size: 2rem;
+            opacity: 0.3;
+            transition: all 0.3s ease;
+        }
+
+        .tomato.completed {
+            opacity: 1;
+            animation: pop 0.3s ease;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+
+        /* Settings Panel */
+        .settings-toggle {
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 auto;
+            padding: 10px 20px;
+            transition: color 0.3s ease;
+        }
+
+        .settings-toggle:hover {
+            color: var(--text-light);
+        }
+
+        .settings-panel {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        .settings-panel.open {
+            max-height: 300px;
+        }
+
+        .settings-content {
+            padding: 20px;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .setting-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .setting-label {
+            color: #888;
+        }
+
+        .setting-input {
+            width: 80px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-light);
+            font-size: 1rem;
+            text-align: center;
+        }
+
+        .setting-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px var(--work-color);
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            background: var(--work-color);
+            color: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .timer-container {
+                width: 250px;
+                height: 250px;
+            }
+
+            .time-display {
+                font-size: 3.5rem;
+            }
+
+            .mode-btn {
+                padding: 10px 18px;
+                font-size: 0.9rem;
+            }
+
+            .stats {
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍅 番茄时钟</h1>
+        <p class="subtitle">专注工作，高效休息</p>
+
+        <!-- Mode Selector -->
+        <div class="mode-selector">
+            <button class="mode-btn active work" data-mode="work" data-time="25">工作</button>
+            <button class="mode-btn short-break" data-mode="short-break" data-time="5">短休息</button>
+            <button class="mode-btn long-break" data-mode="long-break" data-time="15">长休息</button>
+        </div>
+
+        <!-- Timer Display -->
+        <div class="timer-container">
+            <div class="timer-circle work">
+                <div class="time-display">25:00</div>
+                <div class="mode-label">工作时间</div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button class="control-btn reset-btn" id="resetBtn" title="重置">
+                🔄
+            </button>
+            <button class="control-btn start-btn" id="startBtn" title="开始">
+                ▶️
+            </button>
+        </div>
+
+        <!-- Tomato Progress -->
+        <div class="tomatoes">
+            <span class="tomato" data-index="0">🍅</span>
+            <span class="tomato" data-index="1">🍅</span>
+            <span class="tomato" data-index="2">🍅</span>
+            <span class="tomato" data-index="3">🍅</span>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="completedPomodoros">0</div>
+                <div class="stat-label">完成番茄</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="totalMinutes">0</div>
+                <div class="stat-label">专注分钟</div>
+            </div>
+        </div>
+
+        <!-- Settings -->
+        <button class="settings-toggle" id="settingsToggle">
+            ⚙️ 设置
+        </button>
+        <div class="settings-panel" id="settingsPanel">
+            <div class="settings-content">
+                <div class="setting-item">
+                    <span class="setting-label">工作时长 (分钟)</span>
+                    <input type="number" class="setting-input" id="workDuration" value="25" min="1" max="60">
+                </div>
+                <div class="setting-item">
+                    <span class="setting-label">短休息时长 (分钟)</span>
+                    <input type="number" class="setting-input" id="shortBreakDuration" value="5" min="1" max="30">
+                </div>
+                <div class="setting-item">
+                    <span class="setting-label">长休息时长 (分钟)</span>
+                    <input type="number" class="setting-input" id="longBreakDuration" value="15" min="1" max="60">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification">
+        时间到！
+    </div>
+
+    <!-- Audio for notifications -->
+    <audio id="alarmSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleQAMHpn/8eiNMQAQJNT/97VZAB00/+zMdAAJXv/5zXMADnn/8rpoABO0/9yLQQAJyf/RdzYADtn/yWwpABLj/7hbHwAU5v+mSRQAFd7/kkQPABTO/39JEQATuv9yURgAEaL/bFkgAA+L/2thKQAN9f9wZTMAC+H/dWU+AArf/3pgQgAJ3v9+WEQACN//gk1DAAL/AIZAP/8P4PiFNTf/ItX/hS0u/y/Q/4MpJf9BzP+BKB3/U8v/fysc/2TI/38wHv9xxf+AOCP/fMH/gjUo/4e9/4Q1K/+Quv+GNDL/mbf/iDY5/6G0/4o7Qf+nsPuMQkn/rKz3j0lR/7Co8pJRWf+ypO2UWGH/s5/oll9q/7Ob4phfcv+ylt2aX3v/sZHYnGB+/6+L0p1ggP+tg8ufX4P/qnvFoV6F/6dzu6ReiP+jarmn" type="audio/wav">
+    </audio>
+
+    <script>
+        // Pomodoro Timer Application
+        class PomodoroTimer {
+            constructor() {
+                // Settings
+                this.settings = {
+                    work: 25,
+                    shortBreak: 5,
+                    longBreak: 15
+                };
+
+                // State
+                this.currentMode = 'work';
+                this.timeRemaining = this.settings.work * 60;
+                this.isRunning = false;
+                this.timerInterval = null;
+                this.completedPomodoros = 0;
+                this.totalMinutes = 0;
+                this.currentCyclePomodoros = 0;
+
+                // DOM Elements
+                this.timeDisplay = document.querySelector('.time-display');
+                this.modeLabel = document.querySelector('.mode-label');
+                this.timerCircle = document.querySelector('.timer-circle');
+                this.startBtn = document.getElementById('startBtn');
+                this.resetBtn = document.getElementById('resetBtn');
+                this.modeButtons = document.querySelectorAll('.mode-btn');
+                this.notification = document.getElementById('notification');
+                this.settingsToggle = document.getElementById('settingsToggle');
+                this.settingsPanel = document.getElementById('settingsPanel');
+                this.alarmSound = document.getElementById('alarmSound');
+                this.tomatoes = document.querySelectorAll('.tomato');
+
+                // Settings inputs
+                this.workDurationInput = document.getElementById('workDuration');
+                this.shortBreakDurationInput = document.getElementById('shortBreakDuration');
+                this.longBreakDurationInput = document.getElementById('longBreakDuration');
+
+                // Load saved data
+                this.loadFromStorage();
+
+                // Initialize
+                this.init();
+            }
+
+            init() {
+                // Event listeners
+                this.startBtn.addEventListener('click', () => this.toggleTimer());
+                this.resetBtn.addEventListener('click', () => this.resetTimer());
+
+                this.modeButtons.forEach(btn => {
+                    btn.addEventListener('click', () => this.switchMode(btn.dataset.mode));
+                });
+
+                this.settingsToggle.addEventListener('click', () => {
+                    this.settingsPanel.classList.toggle('open');
+                });
+
+                // Settings change listeners
+                this.workDurationInput.addEventListener('change', () => this.updateSettings());
+                this.shortBreakDurationInput.addEventListener('change', () => this.updateSettings());
+                this.longBreakDurationInput.addEventListener('change', () => this.updateSettings());
+
+                // Update display
+                this.updateDisplay();
+                this.updateStats();
+                this.updateTomatoes();
+            }
+
+            toggleTimer() {
+                if (this.isRunning) {
+                    this.pauseTimer();
+                } else {
+                    this.startTimer();
+                }
+            }
+
+            startTimer() {
+                this.isRunning = true;
+                this.startBtn.innerHTML = '⏸️';
+                this.startBtn.classList.add('running');
+                this.timerCircle.classList.add('running');
+
+                this.timerInterval = setInterval(() => {
+                    this.timeRemaining--;
+                    this.updateDisplay();
+
+                    if (this.timeRemaining <= 0) {
+                        this.timerComplete();
+                    }
+                }, 1000);
+            }
+
+            pauseTimer() {
+                this.isRunning = false;
+                this.startBtn.innerHTML = '▶️';
+                this.startBtn.classList.remove('running');
+                this.timerCircle.classList.remove('running');
+                clearInterval(this.timerInterval);
+            }
+
+            resetTimer() {
+                this.pauseTimer();
+                this.timeRemaining = this.getTimeForMode(this.currentMode);
+                this.updateDisplay();
+            }
+
+            timerComplete() {
+                this.pauseTimer();
+                this.playAlarm();
+                this.showNotification();
+
+                if (this.currentMode === 'work') {
+                    this.completedPomodoros++;
+                    this.currentCyclePomodoros++;
+                    this.totalMinutes += this.settings.work;
+                    this.updateStats();
+                    this.updateTomatoes();
+                    this.saveToStorage();
+
+                    // Auto switch to break
+                    if (this.currentCyclePomodoros >= 4) {
+                        this.currentCyclePomodoros = 0;
+                        this.switchMode('long-break');
+                    } else {
+                        this.switchMode('short-break');
+                    }
+                } else {
+                    // After break, switch back to work
+                    this.switchMode('work');
+                }
+            }
+
+            switchMode(mode) {
+                if (this.isRunning) {
+                    this.pauseTimer();
+                }
+
+                this.currentMode = mode;
+                this.timeRemaining = this.getTimeForMode(mode);
+
+                // Update button styles
+                this.modeButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.dataset.mode === mode) {
+                        btn.classList.add('active');
+                    }
+                });
+
+                // Update timer circle style
+                this.timerCircle.classList.remove('work', 'short-break', 'long-break');
+                this.timerCircle.classList.add(mode);
+
+                // Update mode label
+                const labels = {
+                    'work': '工作时间',
+                    'short-break': '短休息',
+                    'long-break': '长休息'
+                };
+                this.modeLabel.textContent = labels[mode];
+
+                this.updateDisplay();
+            }
+
+            getTimeForMode(mode) {
+                switch(mode) {
+                    case 'work': return this.settings.work * 60;
+                    case 'short-break': return this.settings.shortBreak * 60;
+                    case 'long-break': return this.settings.longBreak * 60;
+                    default: return this.settings.work * 60;
+                }
+            }
+
+            updateDisplay() {
+                const minutes = Math.floor(this.timeRemaining / 60);
+                const seconds = this.timeRemaining % 60;
+                this.timeDisplay.textContent =
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+                // Update page title
+                document.title = `${this.timeDisplay.textContent} - 番茄时钟`;
+            }
+
+            updateStats() {
+                document.getElementById('completedPomodoros').textContent = this.completedPomodoros;
+                document.getElementById('totalMinutes').textContent = this.totalMinutes;
+            }
+
+            updateTomatoes() {
+                this.tomatoes.forEach((tomato, index) => {
+                    if (index < this.currentCyclePomodoros) {
+                        tomato.classList.add('completed');
+                    } else {
+                        tomato.classList.remove('completed');
+                    }
+                });
+            }
+
+            updateSettings() {
+                const work = parseInt(this.workDurationInput.value) || 25;
+                const shortBreak = parseInt(this.shortBreakDurationInput.value) || 5;
+                const longBreak = parseInt(this.longBreakDurationInput.value) || 15;
+
+                this.settings.work = Math.min(60, Math.max(1, work));
+                this.settings.shortBreak = Math.min(30, Math.max(1, shortBreak));
+                this.settings.longBreak = Math.min(60, Math.max(1, longBreak));
+
+                // Update input values to reflect constraints
+                this.workDurationInput.value = this.settings.work;
+                this.shortBreakDurationInput.value = this.settings.shortBreak;
+                this.longBreakDurationInput.value = this.settings.longBreak;
+
+                // Update button display
+                this.modeButtons.forEach(btn => {
+                    if (btn.dataset.mode === 'work') btn.dataset.time = this.settings.work;
+                    if (btn.dataset.mode === 'short-break') btn.dataset.time = this.settings.shortBreak;
+                    if (btn.dataset.mode === 'long-break') btn.dataset.time = this.settings.longBreak;
+                });
+
+                // Reset current timer if not running
+                if (!this.isRunning) {
+                    this.timeRemaining = this.getTimeForMode(this.currentMode);
+                    this.updateDisplay();
+                }
+
+                this.saveToStorage();
+            }
+
+            playAlarm() {
+                // Create a simple beep using Web Audio API
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+
+                    oscillator.frequency.value = 800;
+                    oscillator.type = 'sine';
+                    gainNode.gain.value = 0.3;
+
+                    oscillator.start();
+
+                    // Beep pattern
+                    setTimeout(() => oscillator.stop(), 200);
+                    setTimeout(() => {
+                        const osc2 = audioContext.createOscillator();
+                        osc2.connect(gainNode);
+                        osc2.frequency.value = 800;
+                        osc2.type = 'sine';
+                        osc2.start();
+                        setTimeout(() => osc2.stop(), 200);
+                    }, 300);
+                    setTimeout(() => {
+                        const osc3 = audioContext.createOscillator();
+                        osc3.connect(gainNode);
+                        osc3.frequency.value = 1000;
+                        osc3.type = 'sine';
+                        osc3.start();
+                        setTimeout(() => osc3.stop(), 400);
+                    }, 600);
+                } catch (e) {
+                    console.log('Audio not supported');
+                }
+            }
+
+            showNotification() {
+                const messages = {
+                    'work': '休息时间到！',
+                    'short-break': '继续工作吧！',
+                    'long-break': '继续工作吧！'
+                };
+
+                this.notification.textContent = messages[this.currentMode];
+                this.notification.classList.add('show');
+
+                setTimeout(() => {
+                    this.notification.classList.remove('show');
+                }, 3000);
+
+                // Browser notification
+                if (Notification.permission === 'granted') {
+                    new Notification('番茄时钟', {
+                        body: messages[this.currentMode],
+                        icon: '🍅'
+                    });
+                } else if (Notification.permission !== 'denied') {
+                    Notification.requestPermission();
+                }
+            }
+
+            saveToStorage() {
+                const data = {
+                    completedPomodoros: this.completedPomodoros,
+                    totalMinutes: this.totalMinutes,
+                    settings: this.settings,
+                    date: new Date().toDateString()
+                };
+                localStorage.setItem('pomodoroData', JSON.stringify(data));
+            }
+
+            loadFromStorage() {
+                try {
+                    const data = JSON.parse(localStorage.getItem('pomodoroData'));
+                    if (data) {
+                        // Reset if it's a new day
+                        if (data.date === new Date().toDateString()) {
+                            this.completedPomodoros = data.completedPomodoros || 0;
+                            this.totalMinutes = data.totalMinutes || 0;
+                        }
+                        if (data.settings) {
+                            this.settings = { ...this.settings, ...data.settings };
+                            this.workDurationInput.value = this.settings.work;
+                            this.shortBreakDurationInput.value = this.settings.shortBreak;
+                            this.longBreakDurationInput.value = this.settings.longBreak;
+                        }
+                    }
+                } catch (e) {
+                    console.log('Could not load saved data');
+                }
+            }
+        }
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            const timer = new PomodoroTimer();
+
+            // Request notification permission
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        });
+    </script>
+</body>
+</html>
