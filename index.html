@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>番茄时钟 - Pomodoro Timer</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍅</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🍅 番茄时钟</h1>
+            <p class="subtitle">专注工作，高效生活</p>
+        </header>
+
+        <main>
+            <!-- 模式选择 -->
+            <div class="mode-selector">
+                <button class="mode-btn active" data-mode="work" data-time="25">
+                    <span class="mode-icon">💼</span>
+                    <span class="mode-label">工作</span>
+                    <span class="mode-time">25分钟</span>
+                </button>
+                <button class="mode-btn" data-mode="short-break" data-time="5">
+                    <span class="mode-icon">☕</span>
+                    <span class="mode-label">短休息</span>
+                    <span class="mode-time">5分钟</span>
+                </button>
+                <button class="mode-btn" data-mode="long-break" data-time="15">
+                    <span class="mode-icon">🌴</span>
+                    <span class="mode-label">长休息</span>
+                    <span class="mode-time">15分钟</span>
+                </button>
+            </div>
+
+            <!-- 计时器显示 -->
+            <div class="timer-container">
+                <div class="timer-ring">
+                    <svg class="progress-ring" viewBox="0 0 200 200">
+                        <circle class="progress-ring-bg" cx="100" cy="100" r="90"/>
+                        <circle class="progress-ring-circle" cx="100" cy="100" r="90"/>
+                    </svg>
+                    <div class="timer-display">
+                        <span id="minutes">25</span>
+                        <span class="colon">:</span>
+                        <span id="seconds">00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 控制按钮 -->
+            <div class="controls">
+                <button id="start-btn" class="control-btn primary">
+                    <span class="btn-icon">▶</span>
+                    <span class="btn-text">开始</span>
+                </button>
+                <button id="pause-btn" class="control-btn warning hidden">
+                    <span class="btn-icon">⏸</span>
+                    <span class="btn-text">暂停</span>
+                </button>
+                <button id="reset-btn" class="control-btn secondary">
+                    <span class="btn-icon">↺</span>
+                    <span class="btn-text">重置</span>
+                </button>
+            </div>
+
+            <!-- 统计信息 -->
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-icon">🍅</span>
+                    <span class="stat-value" id="completed-count">0</span>
+                    <span class="stat-label">已完成</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-icon">🎯</span>
+                    <span class="stat-value" id="daily-goal">4</span>
+                    <span class="stat-label">今日目标</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-icon">⏱️</span>
+                    <span class="stat-value" id="total-time">0</span>
+                    <span class="stat-label">专注分钟</span>
+                </div>
+            </div>
+
+            <!-- 设置面板 -->
+            <div class="settings-toggle">
+                <button id="settings-btn" class="settings-btn">
+                    ⚙️ 设置
+                </button>
+            </div>
+
+            <div id="settings-panel" class="settings-panel hidden">
+                <h3>⚙️ 自定义设置</h3>
+                <div class="setting-item">
+                    <label for="work-duration">工作时长（分钟）</label>
+                    <input type="number" id="work-duration" min="1" max="60" value="25">
+                </div>
+                <div class="setting-item">
+                    <label for="short-break-duration">短休息时长（分钟）</label>
+                    <input type="number" id="short-break-duration" min="1" max="30" value="5">
+                </div>
+                <div class="setting-item">
+                    <label for="long-break-duration">长休息时长（分钟）</label>
+                    <input type="number" id="long-break-duration" min="1" max="60" value="15">
+                </div>
+                <div class="setting-item">
+                    <label for="daily-goal-input">今日目标（番茄数）</label>
+                    <input type="number" id="daily-goal-input" min="1" max="20" value="4">
+                </div>
+                <div class="setting-item checkbox">
+                    <label>
+                        <input type="checkbox" id="sound-enabled" checked>
+                        启用声音提醒
+                    </label>
+                </div>
+                <div class="setting-item checkbox">
+                    <label>
+                        <input type="checkbox" id="notification-enabled">
+                        启用桌面通知
+                    </label>
+                </div>
+                <button id="save-settings" class="save-btn">保存设置</button>
+            </div>
+        </main>
+
+        <footer>
+            <p>使用番茄工作法，提高专注力 🚀</p>
+        </footer>
+    </div>
+
+    <!-- 完成提示模态框 -->
+    <div id="modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="modal-icon" id="modal-icon">🎉</span>
+            <h2 id="modal-title">太棒了！</h2>
+            <p id="modal-message">你已完成一个番茄！</p>
+            <button id="modal-btn" class="modal-btn">继续</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
