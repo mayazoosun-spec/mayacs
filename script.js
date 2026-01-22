@@ -483,4 +483,95 @@ class PomodoroTimer {
 // 初始化应用
 document.addEventListener('DOMContentLoaded', () => {
     window.pomodoro = new PomodoroTimer();
+
+    // 处理 URL 参数（用于 PWA 快捷方式）
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+    if (mode && ['work', 'short-break', 'long-break'].includes(mode)) {
+        window.pomodoro.setMode(mode);
+    }
 });
+
+// ==================== PWA 功能 ====================
+
+// 注册 Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', async () => {
+        try {
+            const registration = await navigator.serviceWorker.register('./service-worker.js');
+            console.log('Service Worker 注册成功:', registration.scope);
+
+            // 检查更新
+            registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        // 新版本可用，提示用户刷新
+                        if (confirm('发现新版本，是否刷新页面以更新？')) {
+                            window.location.reload();
+                        }
+                    }
+                });
+            });
+        } catch (error) {
+            console.error('Service Worker 注册失败:', error);
+        }
+    });
+}
+
+// PWA 安装提示
+let deferredPrompt;
+const installBtn = document.createElement('button');
+installBtn.id = 'install-btn';
+installBtn.className = 'install-btn hidden';
+installBtn.innerHTML = '📲 安装应用';
+installBtn.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 25px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+    z-index: 1000;
+    transition: all 0.3s ease;
+`;
+
+document.body.appendChild(installBtn);
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.classList.remove('hidden');
+    installBtn.style.display = 'block';
+});
+
+installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+
+    if (outcome === 'accepted') {
+        console.log('用户已安装应用');
+    }
+
+    deferredPrompt = null;
+    installBtn.style.display = 'none';
+});
+
+window.addEventListener('appinstalled', () => {
+    console.log('PWA 已安装');
+    installBtn.style.display = 'none';
+    deferredPrompt = null;
+});
+
+// 检测是否以 PWA 模式运行
+if (window.matchMedia('(display-mode: standalone)').matches) {
+    console.log('以 PWA 模式运行');
+}

@@ -1,0 +1,47 @@
+{
+  "name": "番茄时钟 - Pomodoro Timer",
+  "short_name": "番茄时钟",
+  "description": "专注工作，高效生活 - 使用番茄工作法提高专注力",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#e74c3c",
+  "orientation": "portrait-primary",
+  "scope": "./",
+  "lang": "zh-CN",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "开始工作",
+      "short_name": "工作",
+      "description": "开始25分钟番茄工作",
+      "url": "./index.html?mode=work"
+    },
+    {
+      "name": "短休息",
+      "short_name": "休息",
+      "description": "开始5分钟短休息",
+      "url": "./index.html?mode=short-break"
+    }
+  ]
+}
