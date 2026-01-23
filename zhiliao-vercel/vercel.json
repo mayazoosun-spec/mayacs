@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "api/**/*.js", "use": "@vercel/node" },
+    { "src": "public/**", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/(.*)", "dest": "/public/$1" }
+  ],
+  "env": {
+    "FEISHU_APP_ID": "cli_a9f85a3bc2f85bd9",
+    "FEISHU_APP_SECRET": "LCAnNoRSHN4pOZKDIMMpXdC4YamqDcLz",
+    "FEISHU_APP_TOKEN": "CTGAbIKYYap81Msk8iVc5ELOn4b",
+    "FEISHU_TABLE_ID": "tblGN0MqO6YtoaqT"
+  }
+}
