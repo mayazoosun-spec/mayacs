@@ -17,8 +17,12 @@ class PomodoroTimer {
         this.totalTime = this.settings.workDuration * 60;
         this.isRunning = false;
         this.intervalId = null;
+        this.endTime = null; // 计时器结束的时间戳，用于精准计时
         this.completedPomodoros = 0;
         this.totalFocusMinutes = 0;
+
+        // 复用 AudioContext
+        this.audioContext = null;
 
         // 缓存DOM元素
         this.cacheElements();
@@ -134,10 +138,17 @@ class PomodoroTimer {
             }
         });
 
-        // 页面可见性变化
+        // 页面可见性变化 — 重新计算剩余时间（后台时 setInterval 可能被节流）
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && this.isRunning) {
-                this.updateDisplay();
+            if (document.visibilityState === 'visible' && this.isRunning && this.endTime) {
+                this.timeLeft = Math.round((this.endTime - Date.now()) / 1000);
+                if (this.timeLeft <= 0) {
+                    this.timeLeft = 0;
+                    this.complete();
+                } else {
+                    this.updateDisplay();
+                    this.updateProgress();
+                }
             }
         });
     }
@@ -154,19 +165,20 @@ class PomodoroTimer {
         this.pauseBtn.classList.remove('hidden');
         this.timerRing.classList.add('running');
 
+        // 记录结束时间戳，用于精准计时（避免 setInterval 漂移）
+        this.endTime = Date.now() + this.timeLeft * 1000;
+
         this.intervalId = setInterval(() => {
-            this.timeLeft--;
+            this.timeLeft = Math.round((this.endTime - Date.now()) / 1000);
 
             if (this.timeLeft <= 0) {
+                this.timeLeft = 0;
                 this.complete();
             } else {
                 this.updateDisplay();
                 this.updateProgress();
             }
         }, 1000);
-
-        // 更新页面标题
-        this.updatePageTitle();
     }
 
     pause() {
@@ -179,6 +191,7 @@ class PomodoroTimer {
 
         clearInterval(this.intervalId);
         this.intervalId = null;
+        this.endTime = null;
 
         // 恢复页面标题
         document.title = '番茄时钟 - Pomodoro Timer';
@@ -295,19 +308,29 @@ class PomodoroTimer {
         this.totalTimeEl.textContent = this.totalFocusMinutes;
     }
 
+    getAudioContext() {
+        if (!this.audioContext) {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        // 某些浏览器需要 resume 已暂停的 AudioContext
+        if (this.audioContext.state === 'suspended') {
+            this.audioContext.resume();
+        }
+        return this.audioContext;
+    }
+
     playSound() {
         if (!this.settings.soundEnabled) return;
 
-        // 创建音频上下文播放提示音
         try {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const ctx = this.getAudioContext();
 
             const playNote = (frequency, startTime, duration) => {
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
+                const oscillator = ctx.createOscillator();
+                const gainNode = ctx.createGain();
 
                 oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
+                gainNode.connect(ctx.destination);
 
                 oscillator.frequency.value = frequency;
                 oscillator.type = 'sine';
@@ -319,7 +342,7 @@ class PomodoroTimer {
                 oscillator.stop(startTime + duration);
             };
 
-            const now = audioContext.currentTime;
+            const now = ctx.currentTime;
             playNote(523.25, now, 0.15);        // C5
             playNote(659.25, now + 0.15, 0.15); // E5
             playNote(783.99, now + 0.3, 0.15);  // G5
@@ -330,8 +353,10 @@ class PomodoroTimer {
     }
 
     requestNotificationPermission() {
-        if ('Notification' in window && Notification.permission === 'default') {
-            // 稍后请求权限
+        if (this.settings.notificationEnabled
+            && 'Notification' in window
+            && Notification.permission === 'default') {
+            Notification.requestPermission();
         }
     }
 
@@ -369,6 +394,20 @@ class PomodoroTimer {
         this.modal.classList.add('hidden');
     }
 
+    updateModeButtonLabels() {
+        const durationMap = {
+            'work': this.settings.workDuration,
+            'short-break': this.settings.shortBreakDuration,
+            'long-break': this.settings.longBreakDuration
+        };
+        this.modeBtns.forEach(btn => {
+            const duration = durationMap[btn.dataset.mode];
+            if (duration !== undefined) {
+                btn.querySelector('.mode-time').textContent = `${duration}分钟`;
+            }
+        });
+    }
+
     loadSettingsToForm() {
         this.workDurationInput.value = this.settings.workDuration;
         this.shortBreakDurationInput.value = this.settings.shortBreakDuration;
@@ -391,22 +430,7 @@ class PomodoroTimer {
             Notification.requestPermission();
         }
 
-        // 更新模式按钮显示
-        this.modeBtns.forEach(btn => {
-            const mode = btn.dataset.mode;
-            const timeSpan = btn.querySelector('.mode-time');
-            switch (mode) {
-                case 'work':
-                    timeSpan.textContent = `${this.settings.workDuration}分钟`;
-                    break;
-                case 'short-break':
-                    timeSpan.textContent = `${this.settings.shortBreakDuration}分钟`;
-                    break;
-                case 'long-break':
-                    timeSpan.textContent = `${this.settings.longBreakDuration}分钟`;
-                    break;
-            }
-        });
+        this.updateModeButtonLabels();
 
         // 保存到本地存储
         this.saveData();
@@ -453,22 +477,7 @@ class PomodoroTimer {
                     this.totalFocusMinutes = 0;
                 }
 
-                // 更新模式按钮显示
-                this.modeBtns.forEach(btn => {
-                    const mode = btn.dataset.mode;
-                    const timeSpan = btn.querySelector('.mode-time');
-                    switch (mode) {
-                        case 'work':
-                            timeSpan.textContent = `${this.settings.workDuration}分钟`;
-                            break;
-                        case 'short-break':
-                            timeSpan.textContent = `${this.settings.shortBreakDuration}分钟`;
-                            break;
-                        case 'long-break':
-                            timeSpan.textContent = `${this.settings.longBreakDuration}分钟`;
-                            break;
-                    }
-                });
+                this.updateModeButtonLabels();
 
                 // 更新时间
                 this.totalTime = this.settings.workDuration * 60;
@@ -525,22 +534,6 @@ const installBtn = document.createElement('button');
 installBtn.id = 'install-btn';
 installBtn.className = 'install-btn hidden';
 installBtn.innerHTML = '📲 安装应用';
-installBtn.style.cssText = `
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-    color: white;
-    border: none;
-    padding: 12px 20px;
-    border-radius: 25px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
-    z-index: 1000;
-    transition: all 0.3s ease;
-`;
 
 document.body.appendChild(installBtn);
 
@@ -548,7 +541,6 @@ window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
     installBtn.classList.remove('hidden');
-    installBtn.style.display = 'block';
 });
 
 installBtn.addEventListener('click', async () => {
@@ -562,12 +554,12 @@ installBtn.addEventListener('click', async () => {
     }
 
     deferredPrompt = null;
-    installBtn.style.display = 'none';
+    installBtn.classList.add('hidden');
 });
 
 window.addEventListener('appinstalled', () => {
     console.log('PWA 已安装');
-    installBtn.style.display = 'none';
+    installBtn.classList.add('hidden');
     deferredPrompt = null;
 });
 
